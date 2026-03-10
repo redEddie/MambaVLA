@@ -77,7 +77,7 @@ class LiberoDataset:
     def __init__(
         self,
         dataset_dir: str,
-        action_seq_len: int = 5,
+        action_seq_len: int = 10,
         max_len_data: int = 136,
         demos_per_task: int = 50,
         start_idx: int = 0,

@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--embed_dim",      type=int, default=256)
     parser.add_argument("--n_layer",        type=int, default=5)
     parser.add_argument("--d_intermediate", type=int, default=256)
-    parser.add_argument("--action_seq_len", type=int, default=5)
+    parser.add_argument("--action_seq_len", type=int, default=10)
     parser.add_argument("--action_dim",     type=int, default=7)
     parser.add_argument("--lang_emb_dim",   type=int, default=512)
     parser.add_argument("--sampling_steps", type=int, default=4)
