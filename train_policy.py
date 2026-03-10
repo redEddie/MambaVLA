@@ -779,10 +779,20 @@ def train_policy(
                 entity=wandb_entity,
                 name=wandb_name,
                 config={
+                    # Training
                     "batch_size": batch_size,
                     "num_epochs": num_epochs,
                     "learning_rate": learning_rate,
                     "device": device,
+                    "enable_ema": enable_ema,
+                    "enable_data_scaling": enable_data_scaling,
+                    "data_scaler_type": data_scaler_type,
+                    "save_freq": save_freq,
+                    "eval_during_training": eval_during_training,
+                    "dataloader_workers": dataloader_workers,
+                    "resume": resume,
+                    # Model architecture
+                    "model_type": model_type,
                     "latent_dim": latent_dim,
                     "embed_dim": embed_dim,
                     "n_layer": n_layer,
@@ -790,11 +800,19 @@ def train_policy(
                     "action_seq_len": action_seq_len,
                     "action_dim": action_dim,
                     "lang_emb_dim": lang_emb_dim,
-                    "enable_ema": enable_ema,
-                    "enable_data_scaling": enable_data_scaling,
-                    "data_scaler_type": data_scaler_type,
-                    "save_freq": save_freq,
-                    "eval_during_training": eval_during_training,
+                    "sampling_steps": kwargs.get("sampling_steps", 4),
+                    "obs_tok_len": obs_tok_len,
+                    "transformer_cfg": transformer_cfg,
+                    # Optimizer
+                    "betas": kwargs.get("betas", [0.9, 0.9]),
+                    "transformer_weight_decay": kwargs.get("transformer_weight_decay", 0.05),
+                    "obs_encoder_weight_decay": kwargs.get("obs_encoder_weight_decay", 0.05),
+                    "ema_decay_rate": kwargs.get("ema_decay_rate", 0.995),
+                    # Dataset
+                    "dataset_size": len(dataset) if hasattr(dataset, '__len__') else "unknown",
+                    "num_demos": dataset.num_data if hasattr(dataset, 'num_data') else "unknown",
+                    "max_len_data": dataset.max_len_data if hasattr(dataset, 'max_len_data') else "unknown",
+                    "demos_per_task": dataset.demos_per_task if hasattr(dataset, 'demos_per_task') else "unknown",
                 }
             )
             log.info("Wandb initialized successfully")

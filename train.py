@@ -43,6 +43,10 @@ def parse_args():
         default="./libero/datasets",
         help="Root directory containing benchmark suite folders",
     )
+    parser.add_argument("--demos_per_task", type=int, default=50,
+                        help="Number of demos to load per task")
+    parser.add_argument("--max_len_data", type=int, default=136,
+                        help="Max timesteps per demo (truncate longer)")
 
     # Model
     parser.add_argument(
@@ -52,33 +56,29 @@ def parse_args():
         choices=["mamba", "transformer"],
         help="Backbone type",
     )
-    parser.add_argument("--latent_dim",   type=int, default=256)
-    parser.add_argument("--embed_dim",    type=int, default=256)
-    parser.add_argument("--n_layer",      type=int, default=5)
+    parser.add_argument("--latent_dim",     type=int, default=256)
+    parser.add_argument("--embed_dim",      type=int, default=256)
+    parser.add_argument("--n_layer",        type=int, default=5)
     parser.add_argument("--d_intermediate", type=int, default=256)
-    parser.add_argument("--action_seq_len", type=int, default=10)
-    parser.add_argument("--action_dim",   type=int, default=7)
-    parser.add_argument("--lang_emb_dim", type=int, default=512)
+    parser.add_argument("--action_seq_len", type=int, default=5)
+    parser.add_argument("--action_dim",     type=int, default=7)
+    parser.add_argument("--lang_emb_dim",   type=int, default=512)
     parser.add_argument("--sampling_steps", type=int, default=4)
 
     # Training
-    parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--bs",     type=int, default=64,  dest="batch_size")
-    parser.add_argument("--lr",     type=float, default=1e-4)
+    parser.add_argument("--epochs",  type=int, default=500)
+    parser.add_argument("--bs",      type=int, default=256, dest="batch_size")
+    parser.add_argument("--lr",      type=float, default=1e-4)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--no_ema",  action="store_true")
     parser.add_argument("--scaler",  type=str, default="minmax", choices=["minmax", "action"])
 
     # Checkpointing
-    parser.add_argument(
-        "--save_dir",
-        type=str,
-        default=None,
-        help="Checkpoint directory (default: ./outputs/<suite>)",
-    )
+    parser.add_argument("--save_dir", type=str, default=None,
+                        help="Checkpoint directory (default: ./outputs/<suite>)")
     parser.add_argument("--save_freq", type=int, default=50)
     parser.add_argument("--resume", type=str, default=None,
-                        help="재개할 체크포인트 경로 (예: outputs/libero_spatial/epoch_00100.pt)")
+                        help="Resume from checkpoint path")
 
     # Logging
     parser.add_argument("--wandb_project", type=str, default="MambaVLA")
@@ -100,6 +100,9 @@ def main():
     dataset = LiberoDataset(
         dataset_dir=dataset_dir,
         action_seq_len=args.action_seq_len,
+        max_len_data=args.max_len_data,
+        demos_per_task=args.demos_per_task,
+        action_dim=args.action_dim,
     )
 
     # --- Save directory ---
@@ -120,7 +123,8 @@ def main():
 
     # --- Train ---
     log.info(f"Starting training: {args.suite} | backbone={args.model} | "
-             f"epochs={args.epochs} | bs={args.batch_size} | lr={args.lr}")
+             f"epochs={args.epochs} | bs={args.batch_size} | lr={args.lr} | "
+             f"action_seq_len={args.action_seq_len} | demos_per_task={args.demos_per_task}")
 
     model, trainer = train_policy(
         dataloader=dataset,
