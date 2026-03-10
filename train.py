@@ -77,6 +77,8 @@ def parse_args():
         help="Checkpoint directory (default: ./outputs/<suite>)",
     )
     parser.add_argument("--save_freq", type=int, default=50)
+    parser.add_argument("--resume", type=str, default=None,
+                        help="재개할 체크포인트 경로 (예: outputs/libero_spatial/epoch_00100.pt)")
 
     # Logging
     parser.add_argument("--wandb_project", type=str, default="MambaVLA")
@@ -143,6 +145,7 @@ def main():
         transformer_cfg=transformer_cfg,
         wandb_project=None if args.no_wandb else args.wandb_project,
         wandb_name=args.wandb_name or f"{args.suite}_{args.model}",
+        resume=args.resume,
     )
 
     log.info("Done.")

@@ -21,7 +21,7 @@ except ImportError:
     print("Warning: LIBERO or robosuite not found. Simulation will not run.")
 
 # CKP = "outputs/libero_object/epoch_02000.pt"
-CKP = "outputs/libero_spatial/epoch_00100.pth"
+CKP = "/home/jeonchanwook/Documents/libero_spatial/final_model.pth"
 # TASK = "libero_object"
 TASK = "libero_spatial"
 

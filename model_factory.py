@@ -6,14 +6,14 @@ from typing import Optional, List, Dict, Any
 
 import torch
 
-from .mambavla_model import MambaVLA
-from .policy.flowmatching import ActionFLowMatching
-from .policy.policy import MambaVLAPolicy
-from .backbones.multi_img_obs_encoder import MultiImageObsEncoder
-from .backbones.resnet.resnets import ResNetEncoder
-from .backbones.clip.clip_lang_encoder import LangClip
-from .mamba.mamba import MixerModel
-from .utils.networks.transformers.transformer_blocks import TransformerEncoder
+from mambavla_model import MambaVLA
+from policy.flowmatching import ActionFLowMatching
+from policy.policy import MambaVLAPolicy
+from backbones.multi_img_obs_encoder import MultiImageObsEncoder
+from backbones.resnet.resnets import ResNetEncoder
+from backbones.clip.clip_lang_encoder import LangClip
+from mamba.mamba import MixerModel
+from utils.networks.transformers.transformer_blocks import TransformerEncoder
 
 
 def create_mamba_backbone(
@@ -174,7 +174,7 @@ def create_mambavla_model(
     }
 
     resnet_cfg = {
-        "_target_": "MambaVLA.ResNetEncoder",
+        "_target_": "backbones.resnet.resnets.ResNetEncoder",
         "latent_dim": latent_dim,
         "pretrained": False,
         "freeze_backbone": False,

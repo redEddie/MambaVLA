@@ -5,7 +5,7 @@ import random
 import logging
 import warnings
 from typing import Any, Optional, Dict
-from .utils.lr_schedulers.tri_stage_scheduler import TriStageLRScheduler
+from utils.lr_schedulers.tri_stage_scheduler import TriStageLRScheduler
 # Suppress all warnings
 os.environ['PYTHONWARNINGS'] = 'ignore'
 warnings.filterwarnings('ignore')
@@ -36,7 +36,7 @@ if not hasattr(sys.stderr, '_is_filtered'):
 try:
     import wandb
     WANDB_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     WANDB_AVAILABLE = False
 
 from tqdm import tqdm
@@ -56,11 +56,11 @@ except ImportError:
 
 import multiprocessing as mp
 
-from .model_factory import create_mambavla_model
-from .mambavla_model import MambaVLA
-from .policy.flowmatching import ActionFLowMatching
-from .utils.scaler import Scaler, ActionScaler, MinMaxScaler
-from .utils.ema import ExponentialMovingAverage
+from model_factory import create_mambavla_model
+from mambavla_model import MambaVLA
+from policy.flowmatching import ActionFLowMatching
+from utils.scaler import Scaler, ActionScaler, MinMaxScaler
+from utils.ema import ExponentialMovingAverage
 
 # Set multiprocessing start method to 'spawn' to avoid CUDA issues
 try:
@@ -267,14 +267,19 @@ class MambaVLATrainingModel(nn.Module):
         
         return loss
     
-    def store_model_weights(self, working_dir: str, sv_name: str = 'model'):
+    def store_model_weights(self, working_dir: str, sv_name: str = 'model',
+                             optimizer=None, epoch: int = 0):
         """Store model weights."""
         os.makedirs(working_dir, exist_ok=True)
         checkpoint_path = os.path.join(working_dir, f'{sv_name}.pt')
-        torch.save({
+        ckpt = {
             'model_state_dict': self.model.state_dict(),
             'policy_state_dict': self.policy.state_dict(),
-        }, checkpoint_path)
+            'epoch': epoch,
+        }
+        if optimizer is not None:
+            ckpt['optimizer_state_dict'] = optimizer.state_dict()
+        torch.save(ckpt, checkpoint_path)
         return checkpoint_path
     
     def reset(self):
@@ -427,7 +432,8 @@ class Trainer:
             enable_ema: bool = False,
             checkpoint_frequency: int = 10,
             eval_during_training: Optional[int] = None,
-            eval_callback: Optional[Any] = None
+            eval_callback: Optional[Any] = None,
+            resume_path: Optional[str] = None,
     ):
         """Initialize."""
 
@@ -459,6 +465,10 @@ class Trainer:
         # Evaluation during training configuration
         self.eval_during_training = eval_during_training
         self.eval_callback = eval_callback
+
+        # Resume configuration
+        self.resume_path = resume_path
+        self.start_epoch = 0
 
         # Initialize data loaders
         self._setup_data_loaders()
@@ -514,13 +524,11 @@ class Trainer:
 
     def _setup_training_components(self, model):
         """Setup scaler, EMA, and optimizer for training."""
-        # assign scaler to model class (match working version)
         model.set_scaler(self.scaler)
 
         if self.if_use_ema:
             self.ema_helper = ExponentialMovingAverage(model.parameters(), self.decay_ema, self.device)
 
-        # define optimizer (match working version)
         if model.use_lr_scheduler:
             result = model.configure_optimizers()
             if isinstance(result, tuple):
@@ -532,9 +540,20 @@ class Trainer:
             self.optimizer = model.configure_optimizers()
             self.scheduler = None
 
+        # Resume from checkpoint
+        if self.resume_path is not None:
+            log.info(f"Resuming from checkpoint: {self.resume_path}")
+            ckpt = torch.load(self.resume_path, map_location=self.device)
+            model.model.load_state_dict(ckpt['model_state_dict'])
+            model.policy.load_state_dict(ckpt['policy_state_dict'])
+            if 'optimizer_state_dict' in ckpt:
+                self.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            self.start_epoch = ckpt.get('epoch', 0)
+            log.info(f"Resumed from epoch {self.start_epoch}")
+
     def _run_training_loop(self, model):
         """Execute the main training loop over all epochs."""
-        for num_epoch in tqdm(range(self.epoch), desc="Epochs", dynamic_ncols=True):
+        for num_epoch in tqdm(range(self.start_epoch, self.epoch), desc="Epochs", dynamic_ncols=True):
             epoch_loss = self._train_single_epoch(model, num_epoch)
             self._log_epoch_results(num_epoch, epoch_loss)
             self._save_checkpoint_if_needed(model, num_epoch)
@@ -610,7 +629,9 @@ class Trainer:
         if (num_epoch + 1) % self.save_every_n_epochs == 0:
             try:
                 if hasattr(model, 'store_model_weights'):
-                    checkpoint_path = model.store_model_weights(self.working_dir, sv_name=f"epoch_{num_epoch + 1:05d}")
+                    checkpoint_path = model.store_model_weights(
+                        self.working_dir, sv_name=f"epoch_{num_epoch + 1:05d}",
+                        optimizer=self.optimizer, epoch=num_epoch + 1)
                 else:
                     # Fallback: save using torch.save
                     checkpoint_path = os.path.join(self.working_dir, f"epoch_{num_epoch + 1:05d}.pt")
@@ -649,13 +670,14 @@ class Trainer:
             self.ema_helper.copy_to(model.parameters())
         
         if hasattr(model, 'store_model_weights'):
-            model.store_model_weights(model.working_dir, sv_name='final_model')
+            model.store_model_weights(model.working_dir, sv_name='final_model',
+                                      optimizer=self.optimizer, epoch=self.epoch)
         else:
-            # Fallback: save using torch.save
             final_path = os.path.join(self.working_dir, 'final_model.pt')
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
+                'epoch': self.epoch,
             }, final_path)
 
 
@@ -710,6 +732,7 @@ def train_policy(
     wandb_name: Optional[str] = None,
     model_type: str = "mamba",
     transformer_cfg: Optional[dict] = None,
+    resume: Optional[str] = None,
     **kwargs
 ):
     """
@@ -854,7 +877,8 @@ def train_policy(
         enable_ema=enable_ema,
         checkpoint_frequency=save_freq,
         eval_during_training=eval_during_training,
-        eval_callback=eval_callback
+        eval_callback=eval_callback,
+        resume_path=resume,
     )
     
     # Set working directory

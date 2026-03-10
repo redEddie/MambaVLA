@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import hydra
-from MambaVLA.utils.crop_randomizer import CropRandomizer
+from utils.crop_randomizer import CropRandomizer
 
 
 class ModuleAttrMixin(nn.Module):

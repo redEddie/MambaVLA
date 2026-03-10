@@ -18,7 +18,7 @@ import torch.nn.functional as F
 from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTensor
 from tqdm import tqdm
 
-from MambaVLA.utils.networks.clip_tokenizer import SimpleTokenizer as _Tokenizer
+from utils.networks.clip_tokenizer import SimpleTokenizer as _Tokenizer
 
 try:
     from torchvision.transforms import InterpolationMode

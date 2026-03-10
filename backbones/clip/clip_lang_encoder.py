@@ -3,7 +3,7 @@ from typing import List
 import torch
 import torch.nn as nn
 
-from MambaVLA.utils.networks.clip import build_model, load_clip, tokenize
+from utils.networks.clip import build_model, load_clip, tokenize
 
 
 

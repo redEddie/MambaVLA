@@ -18,14 +18,14 @@ import einops
 import torch
 import torch.nn as nn
 import wandb
-from MambaVLA.utils.lr_schedulers.tri_stage_scheduler import TriStageLRScheduler
+from utils.lr_schedulers.tri_stage_scheduler import TriStageLRScheduler
 
 log = logging.getLogger(__name__)
 
 
 
 
-from MambaVLA.utils.scaler import ActionScaler, MinMaxScaler, Scaler
+from utils.scaler import ActionScaler, MinMaxScaler, Scaler
 
 
 
